@@ -113,10 +113,10 @@ flowchart TD
 
 Proyek ini menyediakan dua sampel implementasi kode yang siap digunakan:
 
-1. [`dungeon_ai.py`](file:///d:/Documents/Semester%205/Game%20Development/Dungeon%20Game/dungeon_ai.py): Simulasi CLI interaktif lengkap menggunakan Python (menampilkan peta dungeon grid ASCII, jalur A*, dan pergerakan musuh langkah demi langkah).
+1. [`main.py`](file:///d:/Documents/Semester%205/Game%20Development/Dungeon%20Game/main.py): Simulasi CLI interaktif lengkap menggunakan Python (menampilkan peta dungeon grid ASCII, jalur A*, dan pergerakan musuh langkah demi langkah).
 2. [`EnemyAI.cs`](file:///d:/Documents/Semester%205/Game%20Development/Dungeon%20Game/EnemyAI.cs): Implementasi class C# berstandar Game Engine (Unity / Standalone).
 
-### Kode Python (`dungeon_ai.py`)
+### Kode Python (`main.py`)
 ```python
 import math
 import heapq
@@ -212,7 +212,7 @@ Untuk melihat simulasi algoritma secara langsung di komputer Anda:
 
 ```bash
 # Jalankan script python
-python dungeon_ai.py
+python main.py
 ```
 
 Anda akan melihat output visual peta dungeon di terminal, posisi Player `P`, Enemy `E`, rintangan `###`, dan jejak lintasan A* `*`.
