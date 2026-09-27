@@ -1,72 +1,37 @@
-Nama: Galea Violet
-NIM: 20240801104
-Kelas: KH001
-Mata Kuliah: Game Development
+Nama  : Galea Violet
+NIM   : 20240801104
+Kelas : KH001
+Mata Kuliah : Game Development
 
 # Tugas Game Development: Enemy AI Detection, Pathfinding, and Movement in Dungeon
 
-Tugas ini berisi penjelaskan logika dan implementasi sistem kecerdasan buatan (Enemy AI) pada game *Dungeon Crawler*, yang mencakup mekanisme deteksi pemain, penentuan jangkauan serangan, pencarian rute terpendek, dan pergerakan musuh.
+Deskripsi Singkat:
+Player bergerak di dalam sebuah dungeon. Enemy harus mendeteksi player, menentukan apakah player berada dalam jangkauan, mencari jalur menuju player, kemudian bergerak menuju player.
 
 ---
 
 ## 1. Identifikasi Algoritma yang Digunakan
 
-Untuk menangani skenario pergerakan dan deteksi musuh di dalam dungeon, digunakan kombinasi 3 algoritma utama:
+Untuk skenario pergerakan dan deteksi musuh di dalam dungeon, digunakan kombinasi algoritma berikut:
 
-### A. Finite State Machine (FSM)
-FSM digunakan sebagai pengambil keputusan (*decision maker*) untuk mengatur status perilaku musuh secara dinamis:
-- **IDLE / PATROL**: Musuh diam atau berpatroli saat player berada di luar jangkauan deteksi.
-- **CHASE**: Musuh mulai mengejar player (mengaktifkan algoritma pencarian jalur) ketika player memasuki jangkauan deteksi (*Detection Range*).
-- **ATTACK**: Musuh berhenti dan menyerang ketika player berada pada jangkauan serang (*Attack Range*).
+1. **Finite State Machine (FSM)**  
+   Digunakan untuk mengatur status perilaku musuh secara dinamis berdasarkan kondisi player di sekitar:
+   - **IDLE / PATROL**: Musuh diam/patroli saat player belum terdeteksi.
+   - **CHASE**: Musuh bergerak mengejar player saat player masuk ke dalam jangkauan deteksi (*Detection Range*).
+   - **ATTACK**: Musuh berhenti dan menyerang saat player berada dalam jangkauan serang (*Attack Range*).
 
-### B. Euclidean Distance (Deteksi & Jangkauan)
-Digunakan untuk menghitung jarak fisik langsung antara lokasi musuh (x1, y1) dan lokasi player (x2, y2):
+2. **Euclidean Distance**  
+   Digunakan untuk mengukur jarak fisik langsung antara musuh dan player:
+   `Jarak (d) = sqrt((x2 - x1)^2 + (y2 - y1)^2)`  
+   - Jika `d <= Jangkauan Deteksi` ➔ Masuk status **CHASE**.
+   - Jika `d <= Jangkauan Serang` ➔ Masuk status **ATTACK**.
 
-`Jarak (d) = sqrt((x2 - x1)^2 + (y2 - y1)^2)`
-
-- Jika `d <= Jangkauan Deteksi`, musuh berganti state ke **CHASE**.
-- Jika `d <= Jangkauan Serang`, musuh berganti state ke **ATTACK**.
-
-### C. A* (A-Star) Pathfinding Algorithm
-Algoritma pencarian jalur terpendek dari posisi musuh menuju posisi player di dalam grid dungeon yang memiliki rintangan (dinding/obstacle).
-
-A* menentukan rute terbaik dengan menghitung fungsi biaya `f(n) = g(n) + h(n)`:
-- `g(n)`: Biaya langkah dari posisi awal ke node saat ini.
-- `h(n)`: Estimasi jarak heuristik (Manhattan Distance) dari node saat ini ke posisi player:  
-  `h(n) = |x_player - x_node| + |y_player - y_node|`
-- `f(n)`: Total estimasi biaya jalur.
+3. **A* (A-Star) Pathfinding**  
+   Algoritma untuk mencari rute/jalur terpendek dari musuh menuju player di dalam dungeon yang memiliki rintangan (dinding). Algoritma ini mengevaluasi fungsi biaya `f(n) = g(n) + h(n)` menggunakan jarak heuristik Manhattan `h(n) = |x_target - x_n| + |y_target - y_n|`.
 
 ---
 
 ## 2. Flowchart Algoritma Enemy AI
-
-Berikut adalah alur kerja sistem AI musuh:
-
-```mermaid
-flowchart TD
-    Start([Mulai Update Loop AI]) --> CheckDist[Hitung Jarak Euclidean ke Player]
-    CheckDist --> CondDetect{Jarak <= Detection Range?}
-    
-    CondDetect -- Tidak --> StateIdle[Set State = IDLE / PATROL]
-    StateIdle --> End([Selesai Loop])
-    
-    CondDetect -- Ya --> CondAttack{Jarak <= Attack Range?}
-    
-    CondAttack -- Ya --> StateAttack[Set State = ATTACK <br/> Serang Player]
-    StateAttack --> End
-    
-    CondAttack -- Tidak --> StateChase[Set State = CHASE]
-    StateChase --> RunAStar[Hitung Jalur A* Pathfinding]
-    
-    RunAStar --> CheckPath{Jalur Ditemukan?}
-    CheckPath -- Ya --> StepMove[Gerakkan Musuh 1 Langkah]
-    CheckPath -- Tidak --> Wait[Musuh Diam / Menunggu]
-    
-    StepMove --> End
-    Wait --> End
-```
-
-### Versi Alur Teks
 
 ```text
 [MULAI LOOP UPDATE AI ENEMY]
@@ -104,44 +69,62 @@ flowchart TD
 
 ---
 
-## 3. Code Snippet & Simulasi
+## 3. Code Snippet (C#)
 
-Implementasi kode dibagi menjadi dua versi:
+Berikut adalah potongan kode C# yang menangani pergerakan, deteksi jangkauan, dan FSM pada musuh:
 
-1. **Simulasi Python (`main.py`)**: Program CLI interaktif untuk menguji pergerakan musuh `E` mengejar player `P` pada peta grid dungeon secara langsung.
-2. **Skrip C# (`EnemyAI.cs`)**: Implementasi class berstandar Game Engine (Unity).
+```csharp
+using System;
+using System.Collections.Generic;
 
-### Contoh Implementasi Singkat Logika AI (Python)
+namespace DungeonGame
+{
+    public enum EnemyState { Idle, Chase, Attack }
 
-```python
-import math
+    public class EnemyAI
+    {
+        public int x, y;
+        public float detectionRange = 7.0f;
+        public float attackRange = 1.5f;
+        public EnemyState currentState = EnemyState.Idle;
 
-class EnemyAI:
-    def __init__(self, x, y, detection_range=10.0, attack_range=1.5):
-        self.x = x
-        self.y = y
-        self.detection_range = detection_range
-        self.attack_range = attack_range
-        self.state = "IDLE"
+        // 1. Hitung Jarak Euclidean ke Player
+        public float CalculateDistance(int targetX, int targetY)
+        {
+            int dx = targetX - this.x;
+            int dy = targetY - this.y;
+            return (float)Math.Sqrt(dx * dx + dy * dy);
+        }
 
-    def update(self, player_x, player_y, grid):
-        # 1. Hitung Jarak Euclidean ke Player
-        distance = math.sqrt((self.x - player_x)**2 + (self.y - player_y)**2)
+        // 2. Update Logika & FSM Musuh
+        public void UpdateAI(int playerX, int playerY, Node[,] gridMap, int mapWidth, int mapHeight)
+        {
+            float distance = CalculateDistance(playerX, playerY);
 
-        # 2. Evaluasi FSM (Detection & Attack Range)
-        if distance > self.detection_range:
-            self.state = "IDLE"
-        elif distance <= self.attack_range:
-            self.state = "ATTACK"
-        else:
-            self.state = "CHASE"
-            # 3. Cari rute A* dan gerakkan musuh 1 langkah
-            path = astar_pathfinding(grid, (self.x, self.y), (player_x, player_y))
-            if len(path) > 1:
-                self.x, self.y = path[1]
-```
+            // Deteksi Jangkauan & Penentuan State
+            if (distance > detectionRange)
+            {
+                currentState = EnemyState.Idle;
+            }
+            else if (distance <= attackRange)
+            {
+                currentState = EnemyState.Attack;
+            }
+            else
+            {
+                currentState = EnemyState.Chase;
 
-### Cara Menjalankan Simulasi
-```bash
-python main.py
+                // 3. Cari Jalur Terpendek Menggunakan A* Pathfinding
+                List<Node> path = FindPathAStar(x, y, playerX, playerY, gridMap, mapWidth, mapHeight);
+
+                // Bergerak 1 langkah menuju player jika jalur ditemukan
+                if (path != null && path.Count > 1)
+                {
+                    this.x = path[1].x;
+                    this.y = path[1].y;
+                }
+            }
+        }
+    }
+}
 ```
