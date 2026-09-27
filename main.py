@@ -78,18 +78,14 @@ class EnemyAI:
         self.state = "PATROL"
         self.current_path = []
         
-        # Rute Patroli Kontinu (Bolak-balik di lorong walkable)
         self.patrol_a = (14, 9)
         self.patrol_b = (14, 1)
         self.target_patrol = self.patrol_b
 
     def update(self, player_x, player_y, grid, cols, rows):
-        # 1. Hitung Jarak Euclidean ke Player
         distance = math.sqrt((self.x - player_x)**2 + (self.y - player_y)**2)
 
-        # 2. Evaluasi State Machine (FSM)
         if distance > self.detection_range:
-            # STATE: PATROL (Jalan terus bolak-balik di lorong tanpa pernah macet)
             self.state = "PATROL"
             if (self.x, self.y) == self.target_patrol:
                 self.target_patrol = self.patrol_a if self.target_patrol == self.patrol_b else self.patrol_b
@@ -99,11 +95,9 @@ class EnemyAI:
                 self.x, self.y = self.current_path[1]
 
         elif distance <= self.attack_range:
-            # STATE: ATTACK (Musuh sampai di jangkauan serang)
             self.state = "ATTACK"
             self.current_path = []
         else:
-            # STATE: CHASE (Mengejar Player pakai A* Pathfinding)
             self.state = "CHASE"
             self.current_path = astar_pathfinding(grid, (self.x, self.y), (player_x, player_y), cols, rows)
             if len(self.current_path) > 1:
@@ -117,7 +111,7 @@ class EnemyAI:
 class DungeonGameGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Dungeon Game - Enemy AI Pathfinder")
+        self.root.title("Dungeon Game - Escape the Dungeon!")
         self.root.configure(bg="#12131c")
 
         self.cols = 16
@@ -139,15 +133,20 @@ class DungeonGameGUI:
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         ]
 
+        # Posisi Awal, Target Finish, & Status Game
         self.player_x = 1
         self.player_y = 1
+        self.finish_x = 1
+        self.finish_y = 9
         self.enemy = EnemyAI(x=14, y=9, detection_range=8.0, attack_range=1.5)
+
+        self.game_status = "PLAYING"  # PLAYING, WIN, GAMEOVER
 
         # Header Metrics UI
         self.header = tk.Frame(root, bg="#1a1c29", padx=16, pady=12)
         self.header.pack(fill=tk.X)
 
-        self.lbl_title = tk.Label(self.header, text="⚔️ DUNGEON CRAWLER - ENEMY AI REALTIME", fg="#7aa2f7", bg="#1a1c29", font=("Helvetica", 12, "bold"))
+        self.lbl_title = tk.Label(self.header, text="🎯 TUJUAN: REACH THE FINISH DOOR (🚪 EXIT) WITHOUT GETTING CAUGHT!", fg="#9ece6a", bg="#1a1c29", font=("Helvetica", 11, "bold"))
         self.lbl_title.pack(anchor="w")
 
         self.sub_frame = tk.Frame(self.header, bg="#1a1c29")
@@ -175,17 +174,18 @@ class DungeonGameGUI:
         tk.Button(self.ctrl, text="➡️ Kanan", command=lambda: self.move_player(1, 0), **btn_cfg).pack(side=tk.LEFT, padx=3)
 
         tk.Button(self.ctrl, text="⚡ Uji Chase (Dekatkan Player)", command=self.teleport_near_enemy, bg="#ff9e64", fg="#11111b", font=("Consolas", 10, "bold"), relief="flat", padx=10, pady=4).pack(side=tk.RIGHT, padx=5)
-        tk.Button(self.ctrl, text="🔄 Reset", command=self.reset_game, bg="#f7768e", fg="#11111b", font=("Consolas", 10, "bold"), relief="flat", padx=10, pady=4).pack(side=tk.RIGHT, padx=5)
+        tk.Button(self.ctrl, text="🔄 Main Lagi / Reset", command=self.reset_game, bg="#7dcfff", fg="#11111b", font=("Consolas", 10, "bold"), relief="flat", padx=10, pady=4).pack(side=tk.RIGHT, padx=5)
 
         self.root.bind("<Key>", self.handle_key)
 
-        # Loop animasi otomatis terus menerus setiap 200ms
+        # Loop animasi otomatis
         self.update_loop()
 
     def teleport_near_enemy(self):
-        self.player_x = 10
-        self.player_y = 8
-        self.render()
+        if self.game_status == "PLAYING":
+            self.player_x = 10
+            self.player_y = 8
+            self.render()
 
     def reset_game(self):
         self.player_x = 1
@@ -194,12 +194,21 @@ class DungeonGameGUI:
         self.enemy.y = 9
         self.enemy.state = "PATROL"
         self.enemy.target_patrol = self.enemy.patrol_b
+        self.game_status = "PLAYING"
         self.render()
 
     def move_player(self, dx, dy):
+        if self.game_status != "PLAYING":
+            return
+
         nx, ny = self.player_x + dx, self.player_y + dy
         if 0 <= nx < self.cols and 0 <= ny < self.rows and self.grid[ny][nx] == 0:
             self.player_x, self.player_y = nx, ny
+            
+            # Cek Kondisi WIN (Mencapai Pintu Finish)
+            if (self.player_x, self.player_y) == (self.finish_x, self.finish_y):
+                self.game_status = "WIN"
+
             self.render()
 
     def handle_key(self, event):
@@ -210,11 +219,16 @@ class DungeonGameGUI:
         elif k in ['d', 'right']: self.move_player(1, 0)
 
     def update_loop(self):
-        # 1. Update AI Enemy (Berjalan kontinyu tanpa henti)
-        self.enemy.update(self.player_x, self.player_y, self.grid, self.cols, self.rows)
-        # 2. Render tampilan
-        self.render()
-        # 3. Ulangi setiap 200ms
+        if self.game_status == "PLAYING":
+            # Update AI Enemy
+            self.enemy.update(self.player_x, self.player_y, self.grid, self.cols, self.rows)
+            
+            # Cek Kondisi GAME OVER (Tertangkap Musuh saat ATTACK)
+            if self.enemy.state == "ATTACK":
+                self.game_status = "GAMEOVER"
+
+            self.render()
+
         self.root.after(200, self.update_loop)
 
     def render(self):
@@ -233,7 +247,22 @@ class DungeonGameGUI:
                     floor_col = "#161722" if (r+c)%2 == 0 else "#13141f"
                     self.canvas.create_rectangle(x1, y1, x2, y2, fill=floor_col, outline="#1f2335", width=1)
 
-        # --- B. RADAR JANGKAUAN DETEKSI ---
+        # --- B. GAMBAR FINISH DOOR (EXIT TILE) ---
+        fx1 = self.finish_x * self.cell_size + 4
+        fy1 = self.finish_y * self.cell_size + 4
+        fx2 = (self.finish_x + 1) * self.cell_size - 4
+        fy2 = (self.finish_y + 1) * self.cell_size - 4
+
+        # Glowing Green Door Aura
+        self.canvas.create_rectangle(fx1-2, fy1-2, fx2+2, fy2+2, fill="#9ece6a", outline="#73daca")
+        self.canvas.create_rectangle(fx1, fy1, fx2, fy2, fill="#41a6b5", outline="#9ece6a", width=2)
+        self.canvas.create_text(
+            self.finish_x * self.cell_size + self.cell_size // 2, 
+            self.finish_y * self.cell_size + self.cell_size // 2, 
+            text="🚪 FINISH", fill="#11111b", font=("Consolas", 8, "bold")
+        )
+
+        # --- C. RADAR JANGKAUAN DETEKSI ---
         ex_px = self.enemy.x * self.cell_size + self.cell_size // 2
         ey_px = self.enemy.y * self.cell_size + self.cell_size // 2
         rad_px = self.enemy.detection_range * self.cell_size
@@ -242,7 +271,7 @@ class DungeonGameGUI:
         cur_col = st_cols.get(self.enemy.state, "#f7768e")
         self.canvas.create_oval(ex_px-rad_px, ey_px-rad_px, ex_px+rad_px, ey_px+rad_px, outline=cur_col, dash=(4, 6), width=2)
 
-        # --- C. JALUR A* PATHFINDING ---
+        # --- D. JALUR A* PATHFINDING ---
         if self.enemy.state == "CHASE" and len(self.enemy.current_path) > 1:
             coords = []
             for px, py in self.enemy.current_path:
@@ -254,7 +283,7 @@ class DungeonGameGUI:
             if len(coords) >= 4:
                 self.canvas.create_line(coords, fill="#ff9e64", width=3, dash=(5, 3))
 
-        # --- D. SPRITE PLAYER (KNIGHT HERO) ---
+        # --- E. SPRITE PLAYER (KNIGHT HERO) ---
         cx = self.player_x * self.cell_size + self.cell_size // 2
         cy = self.player_y * self.cell_size + self.cell_size // 2
         r = self.cell_size // 2 - 6
@@ -264,7 +293,7 @@ class DungeonGameGUI:
         self.canvas.create_rectangle(cx-r+6, cy-4, cx+r-6, cy+4, fill="#c0caf5", outline="")
         self.canvas.create_text(cx, cy + r - 8, text="HERO", fill="#15161e", font=("Consolas", 7, "bold"))
 
-        # --- E. SPRITE ENEMY (DEMON MONSTER WITH HORNS & GLOWING EYES) ---
+        # --- F. SPRITE ENEMY (DEMON MONSTER WITH HORNS & GLOWING EYES) ---
         ecx = self.enemy.x * self.cell_size + self.cell_size // 2
         ecy = self.enemy.y * self.cell_size + self.cell_size // 2
         er = self.cell_size // 2 - 6
@@ -286,13 +315,26 @@ class DungeonGameGUI:
 
         self.canvas.create_text(ecx, ecy + er - 8, text=self.enemy.state, fill="#15161e", font=("Consolas", 7, "bold"))
 
-        if self.enemy.state == "ATTACK":
-            self.canvas.create_rectangle(0, 0, self.cols*self.cell_size, self.rows*self.cell_size, fill="#f7768e", stipple="gray25")
-
-        # --- F. METRICS HUD ---
+        # --- G. METRICS HUD ---
         dist = math.sqrt((self.enemy.x - self.player_x)**2 + (self.enemy.y - self.player_y)**2)
         self.lbl_metrics.config(text=f"PLAYER: ({self.player_x}, {self.player_y})  |  ENEMY: ({self.enemy.x}, {self.enemy.y})  |  JARAK: {dist:.2f}")
         self.lbl_badge.config(text=f" {self.enemy.state} ", bg=cur_col, fg="#11111b")
+
+        # --- H. OVERLAY LAYAR WIN & GAME OVER ---
+        cw = self.cols * self.cell_size
+        ch = self.rows * self.cell_size
+
+        if self.game_status == "WIN":
+            self.canvas.create_rectangle(0, 0, cw, ch, fill="#11111b", stipple="gray75")
+            self.canvas.create_rectangle(cw//2-220, ch//2-50, cw//2+220, ch//2+50, fill="#9ece6a", outline="#73daca", width=3)
+            self.canvas.create_text(cw//2, ch//2-10, text="🎉 YOU WIN! BERHASIL KABUR!", fill="#11111b", font=("Consolas", 14, "bold"))
+            self.canvas.create_text(cw//2, ch//2+18, text="Klik 'Main Lagi / Reset' untuk bermain ulang", fill="#1f2335", font=("Consolas", 9, "bold"))
+
+        elif self.game_status == "GAMEOVER":
+            self.canvas.create_rectangle(0, 0, cw, ch, fill="#11111b", stipple="gray75")
+            self.canvas.create_rectangle(cw//2-220, ch//2-50, cw//2+220, ch//2+50, fill="#f7768e", outline="#db4b4b", width=3)
+            self.canvas.create_text(cw//2, ch//2-10, text="💀 GAME OVER! TERTANGKAP MUSUH!", fill="#11111b", font=("Consolas", 14, "bold"))
+            self.canvas.create_text(cw//2, ch//2+18, text="Klik 'Main Lagi / Reset' untuk mencoba lagi", fill="#1f2335", font=("Consolas", 9, "bold"))
 
 # ==========================================
 # MAIN EXECUTION
