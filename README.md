@@ -1,30 +1,36 @@
 Nama  : Galea Violet
 NIM   : 20240801104
-Kelas : KH001
-Mata Kuliah : Game Development
+Kelas : KH 001
 
 # Tugas Game Development: Enemy AI Detection, Pathfinding, and Movement in Dungeon
 
-Proyek ini berisi jawaban tugas serta aplikasi simulasi game interaktif 2D (*Dungeon Crawler*) dalam bahasa **Python** untuk mendemonstrasikan logika kecerdasan buatan (*Enemy AI*) secara langsung.
+Soal:
+Player bergerak di dalam sebuah dungeon. Enemy harus mendeteksi player, menentukan apakah player berada dalam jangkauan, mencari jalur menuju player, kemudian bergerak menuju player.
+
+1. Identifikasi Algoritma yang digunakan?
+2. Buatlah flow chart untuk algoritma tersebut?
+3. Buat code snippet untuk algoritma tersebut dengan bahasa pemrograman yang anda bisa?
 
 ---
 
 ## 1. Identifikasi Algoritma yang Digunakan
 
-Untuk skenario pergerakan dan deteksi musuh di dalam dungeon, digunakan 3 algoritma utama:
+Untuk skenario pergerakan dan deteksi musuh di dalam dungeon, digunakan kombinasi 3 algoritma utama:
 
 1. **Finite State Machine (FSM)**  
-   Digunakan untuk mengatur status perilaku musuh secara dinamis berdasarkan kondisi player di sekitar:
-   - **PATROL / IDLE**: Musuh berpatroli berkeliling dungeon saat player berada di luar jangkauan (`Jarak > Detection Range`).
-   - **CHASE**: Musuh mengejar player dan mencari rute terpendek saat player masuk jangkauan deteksi (`Attack Range < Jarak <= Detection Range`).
-   - **ATTACK**: Musuh berhenti dan menyerang saat player masuk jangkauan serang (`Jarak <= Attack Range`).
+   Digunakan untuk mengelola status perilaku musuh secara dinamis berdasarkan posisi player:
+   - **IDLE**: Musuh diam saat player berada di luar jangkauan deteksi.
+   - **CHASE**: Musuh bergerak mengejar player saat player masuk dalam jangkauan deteksi (*Detection Range*).
+   - **ATTACK**: Musuh berhenti dan melakukan serangan saat player berada dalam jangkauan serang (*Attack Range*).
 
 2. **Euclidean Distance**  
-   Digunakan untuk menghitung jarak fisik langsung antara lokasi musuh (x1, y1) dan lokasi player (x2, y2):
-   `Jarak (d) = sqrt((x2 - x1)^2 + (y2 - y1)^2)`
+   Digunakan untuk mengukur jarak fisik langsung antara musuh $(x_1, y_1)$ dan player $(x_2, y_2)$:
+   $$\text{Jarak } (d) = \sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2}$$
+   - Jika $d \le \text{Detection Range}$ ➔ Berubah ke state **CHASE**.
+   - Jika $d \le \text{Attack Range}$ ➔ Berubah ke state **ATTACK**.
 
 3. **A* (A-Star) Pathfinding**  
-   Algoritma untuk mencari rute/jalur terpendek dari musuh menuju player mengitari tembok/rintangan dungeon. Evaluasi fungsi biaya menggunakan `f(n) = g(n) + h(n)` dengan heuristik Manhattan `h(n) = |x_target - x_n| + |y_target - y_n|`.
+   Algoritma untuk mencari rute/jalur terpendek dari musuh menuju player mengitari rintangan/tembok dungeon. Algoritma ini mengevaluasi fungsi biaya $f(n) = g(n) + h(n)$ dengan menggunakan heuristik Manhattan Distance $h(n) = |x_{\text{target}} - x_n| + |y_{\text{target}} - y_n|$.
 
 ---
 
@@ -37,7 +43,7 @@ Untuk skenario pergerakan dan deteksi musuh di dalam dungeon, digunakan 3 algori
 [Hitung Jarak Euclidean ke Player]
          │
          ▼
-<Apakah Jarak <= Jangkauan Deteksi?> ────── Tidak ─────► [Set State = PATROL] ──► [SELESAI]
+<Apakah Jarak <= Jangkauan Deteksi?> ────── Tidak ─────► [Set State = IDLE] ──► [SELESAI]
          │
         Ya
          │
@@ -66,51 +72,48 @@ Untuk skenario pergerakan dan deteksi musuh di dalam dungeon, digunakan 3 algori
 
 ---
 
-## 3. Code Snippet & Game Engine (Python)
+## 3. Code Snippet (Python)
 
-Seluruh logika AI, algoritma A*, FSM, dan visualisasi GUI game diimplementasikan di dalam file [`main.py`](file:///d:/Documents/Semester%205/Game%20Development/Dungeon%20Game/main.py):
+Berikut adalah implementasi kode Python sederhana yang menangani deteksi jarak, FSM, dan pergerakan A* Pathfinding:
 
 ```python
 import math
 import heapq
 
 # 1. Algoritma A* Pathfinding
-def astar_pathfinding(grid, start_pos, target_pos, cols, rows):
-    # Evaluasi Node dengan f(n) = g(n) + h(n)
-    # Mengembalikan daftar koordinat rute terpendek
+def astar_pathfinding(grid, start, target, cols, rows):
+    # Mengembalikan jalur terpendek berupa list posisi (x, y) dari start ke target
     pass
 
-# 2. Kelas Enemy AI (Finite State Machine + Euclidean Distance)
+# 2. Kelas Enemy AI (FSM + Euclidean Distance + Movement)
 class EnemyAI:
     def __init__(self, x, y, detection_range=8.0, attack_range=1.5):
         self.x = x
         self.y = y
         self.detection_range = detection_range
         self.attack_range = attack_range
-        self.state = "PATROL"
-        self.current_path = []
+        self.state = "IDLE"
 
     def update(self, player_x, player_y, grid, cols, rows):
         # 1. Hitung Jarak Euclidean ke Player
         distance = math.sqrt((self.x - player_x)**2 + (self.y - player_y)**2)
 
-        # 2. FSM Decision Making
+        # 2. Evaluasi State Machine (FSM)
         if distance > self.detection_range:
-            self.state = "PATROL"
-            # Jalankan rute patroli otomatis
+            self.state = "IDLE"
         elif distance <= self.attack_range:
             self.state = "ATTACK"
         else:
             self.state = "CHASE"
-            # Cari rute A* dan gerakkan musuh 1 langkah ke Player
-            self.current_path = astar_pathfinding(grid, (self.x, self.y), (player_x, player_y), cols, rows)
-            if len(self.current_path) > 1:
-                self.x, self.y = self.current_path[1]
+            # 3. Cari rute terpendek pakai A* dan gerakkan musuh 1 langkah
+            path = astar_pathfinding(grid, (self.x, self.y), (player_x, player_y), cols, rows)
+            if len(path) > 1:
+                self.x, self.y = path[1]
 
-        return distance
+        return self.state
 ```
 
-### 🎮 Cara Menjalankan Game
+Untuk melihat simulasi pergerakan algoritma ini langkah demi langkah, jalankan file `main.py`:
 ```bash
 python main.py
 ```
