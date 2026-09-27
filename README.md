@@ -1,3 +1,8 @@
+Nama: Galea Violet
+NIM: 20240801104
+Kelas: KH001
+Mata Kuliah: Game Development
+
 # Tugas Game Development: Enemy AI Detection, Pathfinding, and Movement in Dungeon
 
 Dokumen ini berisi identifikasi algoritma, *flowchart*, serta *code snippet* (Python & C#) untuk sistem pergerakan dan AI Musuh (*Enemy AI*) di dalam game *Dungeon Crawler*.
