@@ -19,9 +19,9 @@ Untuk skenario pergerakan dan deteksi musuh di dalam dungeon, digunakan kombinas
 
 1. **Finite State Machine (FSM)**  
    Digunakan untuk mengelola status perilaku musuh secara dinamis berdasarkan posisi player:
-   - **IDLE**: Musuh diam saat player berada di luar jangkauan deteksi.
-   - **CHASE**: Musuh bergerak mengejar player saat player masuk dalam jangkauan deteksi (*Detection Range*).
-   - **ATTACK**: Musuh berhenti dan melakukan serangan saat player berada dalam jangkauan serang (*Attack Range*).
+   - **PATROL**: Musuh berpatroli saat player berada di luar jangkauan deteksi (`Jarak > Detection Range`).
+   - **CHASE**: Musuh bergerak mengejar player saat player masuk dalam jangkauan deteksi (`Attack Range < Jarak <= Detection Range`).
+   - **ATTACK**: Musuh berhenti dan melakukan serangan saat player berada dalam jangkauan serang (`Jarak <= Attack Range`).
 
 2. **Euclidean Distance**  
    Digunakan untuk mengukur jarak fisik langsung antara musuh $(x_1, y_1)$ dan player $(x_2, y_2)$:
@@ -43,7 +43,7 @@ Untuk skenario pergerakan dan deteksi musuh di dalam dungeon, digunakan kombinas
 [Hitung Jarak Euclidean ke Player]
          │
          ▼
-<Apakah Jarak <= Jangkauan Deteksi?> ────── Tidak ─────► [Set State = IDLE] ──► [SELESAI]
+<Apakah Jarak <= Jangkauan Deteksi?> ────── Tidak ─────► [Set State = PATROL] ──► [SELESAI]
          │
         Ya
          │
@@ -72,17 +72,18 @@ Untuk skenario pergerakan dan deteksi musuh di dalam dungeon, digunakan kombinas
 
 ---
 
-## 3. Code Snippet (Python)
+## 3. Code Snippet & Pygame Engine (Python)
 
-Berikut adalah implementasi kode Python sederhana yang menangani deteksi jarak, FSM, dan pergerakan A* Pathfinding:
+Seluruh logika AI (FSM, Euclidean Distance, A* Pathfinding) dan Pygame Engine visual diimplementasikan di dalam file [`main.py`](file:///d:/Documents/Semester%205/Game%20Development/Dungeon%20Game/main.py):
 
 ```python
+import pygame
 import math
 import heapq
 
 # 1. Algoritma A* Pathfinding
-def astar_pathfinding(grid, start, target, cols, rows):
-    # Mengembalikan jalur terpendek berupa list posisi (x, y) dari start ke target
+def astar_pathfinding(grid, start_pos, target_pos, cols, rows):
+    # Mengembalikan daftar koordinat rute terpendek
     pass
 
 # 2. Kelas Enemy AI (FSM + Euclidean Distance + Movement)
@@ -92,7 +93,8 @@ class EnemyAI:
         self.y = y
         self.detection_range = detection_range
         self.attack_range = attack_range
-        self.state = "IDLE"
+        self.state = "PATROL"
+        self.current_path = []
 
     def update(self, player_x, player_y, grid, cols, rows):
         # 1. Hitung Jarak Euclidean ke Player
@@ -100,20 +102,24 @@ class EnemyAI:
 
         # 2. Evaluasi State Machine (FSM)
         if distance > self.detection_range:
-            self.state = "IDLE"
+            self.state = "PATROL"
         elif distance <= self.attack_range:
             self.state = "ATTACK"
         else:
             self.state = "CHASE"
-            # 3. Cari rute terpendek pakai A* dan gerakkan musuh 1 langkah
-            path = astar_pathfinding(grid, (self.x, self.y), (player_x, player_y), cols, rows)
-            if len(path) > 1:
-                self.x, self.y = path[1]
+            # 3. Cari rute terpendek A* dan gerakkan musuh 1 langkah ke Player
+            self.current_path = astar_pathfinding(grid, (self.x, self.y), (player_x, player_y), cols, rows)
+            if len(self.current_path) > 1:
+                self.x, self.y = self.current_path[1]
 
-        return self.state
+        return distance
 ```
 
-Untuk melihat simulasi pergerakan algoritma ini langkah demi langkah, jalankan file `main.py`:
+### 🎮 Cara Menjalankan Game (Pygame)
 ```bash
+# 1. Install Pygame (jika belum ada)
+pip install pygame
+
+# 2. Jalankan Game
 python main.py
 ```
